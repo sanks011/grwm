@@ -2,9 +2,9 @@
 
 > The universal AI agent handoff tool. Never explain your codebase to a new agent again.
 
-[![npm](https://img.shields.io/npm/v/@sankalpasarkar/grwm)](https://npmjs.com/package/@sankalpasarkar/grwm)
-[![license](https://img.shields.io/npm/l/@sankalpasarkar/grwm)](LICENSE)
-[![node](https://img.shields.io/node/v/@sankalpasarkar/grwm)](package.json)
+[![npm](https://img.shields.io/npm/v/grwm)](https://npmjs.com/package/grwm)
+[![license](https://img.shields.io/npm/l/grwm)](LICENSE)
+[![node](https://img.shields.io/node/v/grwm)](package.json)
 
 ---
 
@@ -62,7 +62,7 @@ Completely eliminate manual typing! Running `grwm autolog` automatically parses 
 ## Install
 
 ```bash
-npm install -g @sankalpasarkar/grwm
+npm install -g grwm
 ```
 
 ---
