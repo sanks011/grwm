@@ -17,7 +17,7 @@ program
     'Get Ready With Me — the universal AI agent handoff tool.\n' +
     'Never explain your codebase to a new agent again.'
   )
-  .version('0.1.9', '-v, --version')
+  .version('0.1.11', '-v, --version')
   .addHelpText('after', `
 Examples:
   $ grwm init                          Initialize in current project
