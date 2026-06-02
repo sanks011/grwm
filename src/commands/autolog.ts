@@ -15,7 +15,7 @@ interface ExtractedData {
 
 /**
   * grwm autolog — Automated Context and Handoff Generator
-  * Uses OpenCode Big Pickle (free), Anthropic Claude, or local Git Heuristics
+  * Uses OpenCode GPT-5 Nano (free), Anthropic Claude, or local Git Heuristics
   */
 export async function autolog(): Promise<void> {
   const trailDir = requireTrailDir()
@@ -43,11 +43,11 @@ export async function autolog(): Promise<void> {
   if (opencodeKey || (!opencodeKey && !anthropicKey)) {
     const key = opencodeKey || 'public'
     if (key === 'public') {
-      info(`No AI API Keys detected. Using ${bold('OpenCode Free Big Pickle')} via the public gateway...`)
+      info(`No AI API Keys detected. Using ${bold('OpenCode Free GPT-5 Nano')} via the public gateway...`)
     } else {
-      info(`Detected ${bold('OpenCode API Key')}! Running free Big Pickle AI autologger...`)
+      info(`Detected ${bold('OpenCode API Key')}! Running free GPT-5 Nano AI autologger...`)
     }
-    result = await callOpenCodeBigPickle(projectRoot, gitState, key, graph)
+    result = await callOpenCodeGPT5Nano(projectRoot, gitState, key, graph)
   } else if (anthropicKey) {
     info(`Detected ${bold('Anthropic API Key')}! Running Claude AI autologger...`)
     result = await callAnthropicClaude(projectRoot, gitState, anthropicKey, graph)
@@ -105,8 +105,8 @@ export async function autolog(): Promise<void> {
   console.log(`  Run ${cyan('grwm status')} or ${cyan('grwm handoff')} to compile your updated brief.\n`)
 }
 
-/** Call OpenCode Big Pickle model (completely free OpenAI compatible endpoint) */
-async function callOpenCodeBigPickle(
+/** Call OpenCode GPT-5 Nano model (completely free OpenAI compatible endpoint) */
+async function callOpenCodeGPT5Nano(
   projectRoot: string,
   gitState: any,
   apiKey: string,
@@ -133,7 +133,7 @@ async function callOpenCodeBigPickle(
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'opencode/big-pickle',
+        model: 'gpt-5-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
         response_format: { type: 'json_object' }
