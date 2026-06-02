@@ -15,7 +15,7 @@ interface ExtractedData {
 
 /**
   * grwm autolog — Automated Context and Handoff Generator
-  * Uses OpenCode GPT-5 Nano (free), Anthropic Claude, or local Git Heuristics
+  * Uses OpenCode DeepSeek V4 Flash (free), Anthropic Claude, or local Git Heuristics
   */
 export async function autolog(): Promise<void> {
   const trailDir = requireTrailDir()
@@ -43,11 +43,11 @@ export async function autolog(): Promise<void> {
   if (opencodeKey || (!opencodeKey && !anthropicKey)) {
     const key = opencodeKey || 'public'
     if (key === 'public') {
-      info(`No AI API Keys detected. Using ${bold('OpenCode Free GPT-5 Nano')} via the public gateway...`)
+      info(`No AI API Keys detected. Using ${bold('OpenCode Free DeepSeek V4 Flash')} via the public gateway...`)
     } else {
-      info(`Detected ${bold('OpenCode API Key')}! Running free GPT-5 Nano AI autologger...`)
+      info(`Detected ${bold('OpenCode API Key')}! Running free DeepSeek V4 Flash AI autologger...`)
     }
-    result = await callOpenCodeGPT5Nano(projectRoot, gitState, key, graph)
+    result = await callOpenCodeDeepSeekV4Flash(projectRoot, gitState, key, graph)
   } else if (anthropicKey) {
     info(`Detected ${bold('Anthropic API Key')}! Running Claude AI autologger...`)
     result = await callAnthropicClaude(projectRoot, gitState, anthropicKey, graph)
@@ -105,8 +105,8 @@ export async function autolog(): Promise<void> {
   console.log(`  Run ${cyan('grwm status')} or ${cyan('grwm handoff')} to compile your updated brief.\n`)
 }
 
-/** Call OpenCode GPT-5 Nano model (completely free OpenAI compatible endpoint) */
-async function callOpenCodeGPT5Nano(
+/** Call OpenCode DeepSeek V4 Flash model (completely free OpenAI compatible endpoint) */
+async function callOpenCodeDeepSeekV4Flash(
   projectRoot: string,
   gitState: any,
   apiKey: string,
@@ -133,7 +133,7 @@ async function callOpenCodeGPT5Nano(
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-5-nano',
+        model: 'deepseek-v4-flash-free',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
         response_format: { type: 'json_object' }

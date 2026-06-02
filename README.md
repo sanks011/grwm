@@ -37,8 +37,8 @@ The next agent, in any tool, finds the briefing in its expected location and sta
 
 Completely eliminate manual typing! Running `grwm autolog` automatically parses your uncommitted changes (`git diff`) and recent commits to dynamically extract completed tasks and technical decisions:
 
-1. **Free OpenCode GPT-5 Nano (Default):** Integrates natively with OpenCode's public keyless gateway to route prompts directly to the free stealth model `gpt-5-nano`. Zero API keys or token costs required!
-2. **Deep Graphify Mapping:** If a Graphify static graph exists in your project (`graphify-out/graph.json`), `autolog` extracts the most central architectural components (highest-degree nodes) and feeds them into the GPT-5 Nano prompt to map your changes precisely to existing modules!
+1. **Free OpenCode DeepSeek V4 Flash (Default):** Integrates natively with OpenCode's public keyless gateway to route prompts directly to the free model `deepseek-v4-flash-free`. Zero API keys or token costs required!
+2. **Deep Graphify Mapping:** If a Graphify static graph exists in your project (`graphify-out/graph.json`), `autolog` extracts the most central architectural components (highest-degree nodes) and feeds them into the DeepSeek prompt to map your changes precisely to existing modules!
 3. **Resilient Local Heuristics Fallback:** Works 100% offline. If the gateway is unreachable, a robust offline regex engine cleans commit prefixes (like `feat:`, `fix:`) and scans commit bodies for design decisions to update your logs instantly.
 
 ---
