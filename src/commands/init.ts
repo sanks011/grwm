@@ -124,6 +124,7 @@ export async function init(options: { yes?: boolean } = {}): Promise<void> {
   console.log(`\n${green('✓')} ${bold('grwm initialized!')}`)
   console.log(`\nNext steps:`)
   console.log(`  ${cyan('grwm add "your first task"')}   — add a task`)
+  console.log(`  ${cyan('grwm autolog')}                   — auto-extract tasks & decisions from git`)
   console.log(`  ${cyan('grwm log "your first decision"')} — log a decision`)
   console.log(`  ${cyan('grwm handoff')}                  — generate handoff brief`)
   console.log(`  ${cyan('grwm --help')}                   — see all commands`)
