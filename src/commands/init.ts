@@ -22,10 +22,12 @@ grwm resume
 This loads task state, decisions, and progress from the last session.
 **Do not start work until you have read the handoff brief.**
 
-At the end of a session or when context exceeds 60%:
-\`\`\`
-grwm handoff
-\`\`\`
+### 🤖 AUTOMATED WORKSPACE LOGGING (Mandatory for AI Agents)
+You (the AI Agent) must keep the task board and decision logs up-to-date automatically using the terminal. Do NOT ask the developer for manual input or permission to run these:
+1. **When starting a new feature/task:** Run \`grwm add "your task description"\`.
+2. **When making an architectural choice/decision:** Run \`grwm log "chose X over Y because Z"\`.
+3. **When completing a task:** Run \`grwm done "your task" --files "modified_file_1.ts,..." --notes "brief summary of changes"\`.
+4. **Before finishing your session or outputting your final response:** Always run \`grwm handoff\` to compile and broadcast the updated brief.
 `
 
 /** Idempotent upsert for agent startup snippets */

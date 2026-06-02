@@ -5,3 +5,4 @@ dist/
 *.log
 trash.txt
 /website
+/opencode

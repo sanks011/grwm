@@ -17,7 +17,7 @@ program
     'Get Ready With Me — the universal AI agent handoff tool.\n' +
     'Never explain your codebase to a new agent again.'
   )
-  .version('0.1.6', '-v, --version')
+  .version('0.1.9', '-v, --version')
   .addHelpText('after', `
 Examples:
   $ grwm init                          Initialize in current project
@@ -32,6 +32,7 @@ Examples:
   $ grwm handoff --index-sessions      Include Claude Code session analysis
   $ grwm resume                        Print handoff brief (run at session start)
   $ grwm status                        Show task board
+  $ grwm autolog                       Automatically log recent tasks/decisions using Git/AI
 
 Knowledge graph (optional but recommended):
   Install graphify: pip install graphifyy && graphify install
@@ -112,6 +113,17 @@ program
   .description('Show the current task board and recent decisions')
   .action(async () => {
     try { await status() }
+    catch (e) { handleError(e) }
+  })
+
+program
+  .command('autolog')
+  .description('Automatically extract uncommitted diffs and Git history into tasks and decisions without manual typing')
+  .action(async () => {
+    try {
+      const { autolog } = await import('./commands/autolog.js')
+      await autolog()
+    }
     catch (e) { handleError(e) }
   })
 

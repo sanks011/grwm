@@ -23,14 +23,14 @@ export async function handoff(options: HandoffOptions = {}): Promise<void> {
   // Auto-install graphify if requested
   if (options.installGraphify) {
     await ensureGraphify(projectRoot, true, true)
-  } else if (options.graph) {
-    // --graph flag: run graphify (must already be installed)
+  } else {
+    // Automatically update graph if graphify is installed
     if (isGraphifyInstalled()) {
-      info('Running graphify to update code graph...')
+      info('Auto-syncing Graphify knowledge graph...')
       const ok = runGraphify(projectRoot)
-      if (ok) success('Code graph updated → graphify-out/graph.json')
-      else warn('graphify failed — check your project root')
-    } else {
+      if (ok) success('Knowledge graph synced → graphify-out/graph.json')
+      else warn('Graphify sync failed — check your project root')
+    } else if (options.graph) {
       warn('graphify not installed. Run: pip install graphifyy && graphify install')
       warn('Or use: grwm handoff --install-graphify')
     }

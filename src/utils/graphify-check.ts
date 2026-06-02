@@ -1,5 +1,19 @@
 import { spawnSync, execSync } from 'child_process'
 import { info, warn, success, cyan, bold, yellow, gray } from './display.js'
+import readline from 'readline'
+
+function askQuestion(query: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+  return new Promise((resolve) => {
+    rl.question(query, (ans) => {
+      rl.close()
+      resolve(ans)
+    })
+  })
+}
 
 /**
  * Graphify — https://graphify.dev
@@ -100,14 +114,20 @@ export async function ensureGraphify(
   console.log()
 
   if (!autoInstall) {
-    console.log(`  To install:`)
-    console.log(`    ${cyan('pip install graphifyy && graphify install')}`)
-    console.log(`  Then generate your knowledge graph:`)
-    console.log(`    ${cyan('graphify .')}`)
-    console.log(`  Then re-run: ${cyan('grwm handoff')} to include the graph in your brief.`)
-    console.log(`  ${gray('(grwm works perfectly fine without it.)')}`)
-    console.log()
-    return { installed: false, graphGenerated: false }
+    const answer = await askQuestion(`  Would you like to install Graphify automatically now? (Y/n): `)
+    const choice = answer.trim().toLowerCase()
+    if (choice === '' || choice === 'y' || choice === 'yes') {
+      autoInstall = true
+    } else {
+      console.log(`\n  To install manually:`)
+      console.log(`    ${cyan('pip install graphifyy && graphify install')}`)
+      console.log(`  Then generate your knowledge graph:`)
+      console.log(`    ${cyan('graphify .')}`)
+      console.log(`  Then re-run: ${cyan('grwm handoff')} to include the graph in your brief.`)
+      console.log(`  ${gray('(grwm works perfectly fine without it.)')}`)
+      console.log()
+      return { installed: false, graphGenerated: false }
+    }
   }
 
   // Auto-install — check Python first

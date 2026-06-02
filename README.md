@@ -14,18 +14,33 @@ Your AI agent hits its context limit. A new session starts. The new agent has no
 
 **grwm fixes this.** It generates a structured, token-budgeted handoff brief and broadcasts it to the native config format of every AI agent you use — simultaneously.
 
+---
+
 ## How it works
 
-```
+```bash
 grwm handoff
 ```
 
 This single command:
-1. Reads your task state, decision log, git diff, and code graph pointer
-2. Compiles a structured brief targeting ≤ 2,000 tokens
-3. Writes it to the native config format of every detected AI agent
+1. Automatically refreshes your PyPI codebase static graph if Graphify is installed.
+2. Reads your task board state, decision log, git branch, commits, and diff pointer.
+3. Compiles a structured, token-optimized brief targeting ≤ 2,000 tokens.
+4. Writes it to the native config format of every detected AI agent.
 
-The next agent, in any tool, finds the briefing in its own expected location and starts immediately with full context.
+The next agent, in any tool, finds the briefing in its expected location and starts immediately with full context.
+
+---
+
+## AI-Powered Autologging (`grwm autolog`)
+
+Completely eliminate manual typing! Running `grwm autolog` automatically parses your uncommitted changes (`git diff`) and recent commits to dynamically extract completed tasks and technical decisions:
+
+1. **Free OpenCode Big Pickle (Default):** Integrates natively with OpenCode's public keyless gateway to route prompts directly to the free stealth model `opencode/big-pickle`. Zero API keys or token costs required!
+2. **Deep Graphify Mapping:** If a Graphify static graph exists in your project (`graphify-out/graph.json`), `autolog` extracts the most central architectural components (highest-degree nodes) and feeds them into the Big Pickle prompt to map your changes precisely to existing modules!
+3. **Resilient Local Heuristics Fallback:** Works 100% offline. If the gateway is unreachable, a robust offline regex engine cleans commit prefixes (like `feat:`, `fix:`) and scans commit bodies for design decisions to update your logs instantly.
+
+---
 
 ## Supported agents
 
@@ -48,9 +63,9 @@ The next agent, in any tool, finds the briefing in its own expected location and
 
 ```bash
 npm install -g @sankalpasarkar/grwm
-# or use without installing:
-npx @sankalpasarkar/grwm init
 ```
+
+---
 
 ## Quick start
 
@@ -58,21 +73,20 @@ npx @sankalpasarkar/grwm init
 # 1. Initialize in your project
 grwm init
 
-# 2. Add tasks
+# 2. Add tasks manually, or let grwm scan your workspace automatically
 grwm add "implement auth module"
-grwm add "set up payments"
 
-# 3. Log decisions as you work
+# 3. Work on your codebase and commit changes...
+# 4. Automatically extract context and update tasks/decisions
+grwm autolog
+
+# 5. Log manual technical decisions as they happen
 grwm log "chose JWT over sessions — stateless required for multi-server"
 
-# 4. Mark progress
-grwm done "auth module" --files "src/auth.ts,src/middleware/jwt.ts"
-grwm blocked "payments" --reason "Stripe API key not provisioned yet"
-
-# 5. When context hits ~60%, generate handoff
+# 6. When context hits ~60%, generate handoff (updates graphify in the background!)
 grwm handoff
 
-# 6. In the new agent session, load context
+# 7. In the new agent session, resume instantly
 grwm resume
 ```
 
@@ -82,12 +96,13 @@ grwm resume
 
 | Command | Description |
 |---|---|
-| `grwm init` | Initialize `.trail/` and write startup instructions to all detected agent configs |
+| `grwm init` | Initialize `.trail/` and write startup instructions to all detected agent configs (with interactive Graphify setup) |
+| `grwm autolog` | Automatically extract uncommitted diffs and Git history into completed tasks and decisions using free Big Pickle or offline local heuristics |
 | `grwm add <title>` | Add a new task (status: queued) |
 | `grwm log <decision>` | Append a decision to the append-only decision log |
 | `grwm done <task>` | Mark task done. `--files "a.ts,b.ts"` to record touched files |
 | `grwm blocked <task>` | Mark task blocked. `--reason "..."` to document why |
-| `grwm handoff` | Compile brief + broadcast to all detected agents |
+| `grwm handoff` | Compile brief + broadcast to all detected agents (auto-runs Graphify in background if installed) |
 | `grwm handoff --agent cursor` | Write only to Cursor |
 | `grwm handoff --index-sessions` | Include Claude Code session analysis (needs `ANTHROPIC_API_KEY`) |
 | `grwm resume` | Print handoff brief (run at session start) |
@@ -121,12 +136,14 @@ Before ending a session or when context exceeds 60%:
 |---|---|---|
 | L0 — Trigger | API token usage | Warn when context is at 60% |
 | L1 — Git | Branch, commits, diff stat | Feeds brief |
-| L2 — Graphify | `graphify-out/graph.json` (optional) | Pointer in brief |
+| L2 — Graphify | `graphify-out/graph.json` (optional) | Pointer in brief (auto-synced & injected into L6 prompt) |
 | L3 — Tasks | `.trail/tasks.json` | Task state (JSON, Zod-validated) |
 | L4 — Decisions | `.trail/decisions.md` | Append-only decision log |
 | L5 — Sessions | `~/.claude/projects/` (opt-in) | `.trail/session-index.json` |
 | L6 — Brief | All layers | `.trail/handoff.md` |
 | Broadcast | `.trail/handoff.md` | All agent config files |
+
+---
 
 ## The handoff brief format
 
@@ -176,4 +193,4 @@ grwm automates the harness layer: writing structured artifacts to disk in real-t
 
 ## License
 
-MIT © [sankalpasarkar](https://github.com/sankalpasarkar)
+MIT © [sankalpasarkar](https://github.com/sanks011)
