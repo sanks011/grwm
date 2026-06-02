@@ -44,24 +44,67 @@ function commandExists(bin: string): boolean {
 }
 
 /**
- * Detect the first available Python 3.10+ binary.
+ * Detect the first available Python 3.10+ binary, including standard Windows user installations.
  */
 function getPythonBin(): string | null {
-  for (const bin of ['python3', 'python', 'python3.10', 'python3.11', 'python3.12', 'python3.13']) {
+  // 1. Try commands in PATH
+  for (const bin of ['python3', 'python', 'python3.14', 'python3.13', 'python3.12', 'python3.11', 'python3.10']) {
     try {
       const result = spawnSync(bin, ['--version'], { encoding: 'utf8' })
-      if (result.status !== 0) continue
-      const version = (result.stdout || result.stderr || '').trim()
-      const match = version.match(/Python (\d+)\.(\d+)/)
-      if (match && parseInt(match[1]) === 3 && parseInt(match[2]) >= 10) return bin
-    } catch { continue }
+      if (result.status === 0) {
+        const version = (result.stdout || result.stderr || '').trim()
+        const match = version.match(/Python (\d+)\.(\d+)/)
+        if (match && parseInt(match[1]) === 3 && parseInt(match[2]) >= 10) return bin
+      }
+    } catch {}
   }
+
+  // 2. Windows fallback: scan common user AppData directories (since Scripts/Python is often not on PATH)
+  if (process.platform === 'win32') {
+    const userProfile = process.env.USERPROFILE || process.env.HOMEPATH || ''
+    if (userProfile) {
+      const appDataLocal = `${userProfile}\\AppData\\Local`
+      const candidatePaths = [
+        `${appDataLocal}\\Python\\pythoncore-3.14-64\\python.exe`,
+        `${appDataLocal}\\Python\\pythoncore-3.13-64\\python.exe`,
+        `${appDataLocal}\\Python\\pythoncore-3.12-64\\python.exe`,
+        `${appDataLocal}\\Python\\pythoncore-3.11-64\\python.exe`,
+        `${appDataLocal}\\Python\\pythoncore-3.10-64\\python.exe`,
+        `${appDataLocal}\\Programs\\Python\\Python314\\python.exe`,
+        `${appDataLocal}\\Programs\\Python\\Python313\\python.exe`,
+        `${appDataLocal}\\Programs\\Python\\Python312\\python.exe`,
+        `${appDataLocal}\\Programs\\Python\\Python311\\python.exe`,
+        `${appDataLocal}\\Programs\\Python\\Python310\\python.exe`,
+      ]
+
+      for (const p of candidatePaths) {
+        try {
+          const result = spawnSync(p, ['--version'], { encoding: 'utf8' })
+          if (result.status === 0) return p
+        } catch {}
+      }
+    }
+  }
+
   return null
 }
 
-/** Check if the graphify CLI is available in PATH. */
+/** Check if python can run the graphify module directly. */
+function isGraphifyInstalledWithPython(pyBin: string): boolean {
+  try {
+    const result = spawnSync(pyBin, ['-m', 'graphify', '--help'], { encoding: 'utf8' })
+    return result.status === 0
+  } catch {
+    return false
+  }
+}
+
+/** Check if the graphify CLI is available in PATH or via Python. */
 export function isGraphifyInstalled(): boolean {
-  return commandExists(GRAPHIFY_BIN)
+  if (commandExists(GRAPHIFY_BIN)) return true
+  const pyBin = getPythonBin()
+  if (pyBin && isGraphifyInstalledWithPython(pyBin)) return true
+  return false
 }
 
 /**
@@ -70,8 +113,16 @@ export function isGraphifyInstalled(): boolean {
  */
 export function runGraphify(projectRoot: string): boolean {
   try {
-    execSync(`${GRAPHIFY_BIN} .`, { cwd: projectRoot, stdio: 'inherit' })
-    return true
+    if (commandExists(GRAPHIFY_BIN)) {
+      execSync(`${GRAPHIFY_BIN} .`, { cwd: projectRoot, stdio: 'inherit' })
+      return true
+    }
+    const pyBin = getPythonBin()
+    if (pyBin && isGraphifyInstalledWithPython(pyBin)) {
+      execSync(`"${pyBin}" -m graphify .`, { cwd: projectRoot, stdio: 'inherit' })
+      return true
+    }
+    return false
   } catch {
     return false
   }
@@ -140,8 +191,8 @@ export async function ensureGraphify(
 
   console.log(`  Auto-installing ${bold('graphifyy')} via pip (using: ${pyBin})...`)
   try {
-    execSync(`pip install ${GRAPHIFY_PIP_PKG}`, { stdio: 'inherit' })
-    execSync(`graphify install`, { stdio: 'inherit' })
+    execSync(`"${pyBin}" -m pip install ${GRAPHIFY_PIP_PKG}`, { stdio: 'inherit' })
+    execSync(`"${pyBin}" -m graphify install`, { stdio: 'inherit' })
     success(`graphify installed`)
 
     if (generate) {
