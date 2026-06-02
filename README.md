@@ -2,9 +2,9 @@
 
 > The universal AI agent handoff tool. Never explain your codebase to a new agent again.
 
-[![npm](https://img.shields.io/npm/v/grwm)](https://npmjs.com/package/grwm)
-[![license](https://img.shields.io/npm/l/grwm)](LICENSE)
-[![node](https://img.shields.io/node/v/grwm)](package.json)
+[![npm](https://img.shields.io/npm/v/@sankalpasarkar/grwm)](https://npmjs.com/package/@sankalpasarkar/grwm)
+[![license](https://img.shields.io/npm/l/@sankalpasarkar/grwm)](LICENSE)
+[![node](https://img.shields.io/node/v/@sankalpasarkar/grwm)](package.json)
 
 ---
 
@@ -23,6 +23,7 @@ grwm handoff
 ```
 
 This single command:
+
 1. Automatically refreshes your PyPI codebase static graph if Graphify is installed.
 2. Reads your task board state, decision log, git branch, commits, and diff pointer.
 3. Compiles a structured, token-optimized brief targeting ≤ 2,000 tokens.
@@ -44,25 +45,25 @@ Completely eliminate manual typing! Running `grwm autolog` automatically parses 
 
 ## Supported agents
 
-| Agent / IDE | File written by `grwm handoff` |
-|---|---|
-| Claude Code | `.claude/CONTEXT.md` |
-| Cursor | `.cursor/rules/grwm-handoff.mdc` |
-| Windsurf | `.windsurf/rules/grwm-handoff.md` |
-| GitHub Copilot | `.github/copilot-instructions.md` |
-| Cline | `.cline/rules/grwm-handoff.md` |
-| Aider | `CONVENTIONS.md` |
-| Gemini Code Assist | `.gemini/grwm-context.md` |
-| OpenAI Codex | `.codex/grwm-context.md` |
-| Continue | `.continue/grwm-context.md` |
-| **All agents** | `AGENTS.md` (always, universal standard) |
+| Agent / IDE        | File written by `grwm handoff`           |
+| ------------------ | ---------------------------------------- |
+| Claude Code        | `.claude/CONTEXT.md`                     |
+| Cursor             | `.cursor/rules/grwm-handoff.mdc`         |
+| Windsurf           | `.windsurf/rules/grwm-handoff.md`        |
+| GitHub Copilot     | `.github/copilot-instructions.md`        |
+| Cline              | `.cline/rules/grwm-handoff.md`           |
+| Aider              | `CONVENTIONS.md`                         |
+| Gemini Code Assist | `.gemini/grwm-context.md`                |
+| OpenAI Codex       | `.codex/grwm-context.md`                 |
+| Continue           | `.continue/grwm-context.md`              |
+| **All agents**     | `AGENTS.md` (always, universal standard) |
 
 ---
 
 ## Install
 
 ```bash
-npm install -g grwm
+npm install -g @sankalpasarkar/grwm
 ```
 
 ---
@@ -94,19 +95,19 @@ grwm resume
 
 ## CLI reference
 
-| Command | Description |
-|---|---|
-| `grwm init` | Initialize `.trail/` and write startup instructions to all detected agent configs (with interactive Graphify setup) |
-| `grwm autolog` | Automatically extract uncommitted diffs and Git history into completed tasks and decisions using free Big Pickle or offline local heuristics |
-| `grwm add <title>` | Add a new task (status: queued) |
-| `grwm log <decision>` | Append a decision to the append-only decision log |
-| `grwm done <task>` | Mark task done. `--files "a.ts,b.ts"` to record touched files |
-| `grwm blocked <task>` | Mark task blocked. `--reason "..."` to document why |
-| `grwm handoff` | Compile brief + broadcast to all detected agents (auto-runs Graphify in background if installed) |
-| `grwm handoff --agent cursor` | Write only to Cursor |
-| `grwm handoff --index-sessions` | Include Claude Code session analysis (needs `ANTHROPIC_API_KEY`) |
-| `grwm resume` | Print handoff brief (run at session start) |
-| `grwm status` | Show task board and recent decisions |
+| Command                         | Description                                                                                                                                  |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `grwm init`                     | Initialize `.trail/` and write startup instructions to all detected agent configs (with interactive Graphify setup)                          |
+| `grwm autolog`                  | Automatically extract uncommitted diffs and Git history into completed tasks and decisions using free Big Pickle or offline local heuristics |
+| `grwm add <title>`              | Add a new task (status: queued)                                                                                                              |
+| `grwm log <decision>`           | Append a decision to the append-only decision log                                                                                            |
+| `grwm done <task>`              | Mark task done. `--files "a.ts,b.ts"` to record touched files                                                                                |
+| `grwm blocked <task>`           | Mark task blocked. `--reason "..."` to document why                                                                                          |
+| `grwm handoff`                  | Compile brief + broadcast to all detected agents (auto-runs Graphify in background if installed)                                             |
+| `grwm handoff --agent cursor`   | Write only to Cursor                                                                                                                         |
+| `grwm handoff --index-sessions` | Include Claude Code session analysis (needs `ANTHROPIC_API_KEY`)                                                                             |
+| `grwm resume`                   | Print handoff brief (run at session start)                                                                                                   |
+| `grwm status`                   | Show task board and recent decisions                                                                                                         |
 
 ---
 
@@ -116,14 +117,16 @@ Add this to your project's `AGENTS.md` so every new agent session automatically 
 
 ```markdown
 ## Session startup
+
 At the start of every new session, run:
-  grwm resume
+grwm resume
 
 Do not start work until you have read the handoff brief.
 
 ## Session end / handoff
+
 Before ending a session or when context exceeds 60%:
-  grwm handoff
+grwm handoff
 ```
 
 `grwm init` writes this automatically.
@@ -132,16 +135,16 @@ Before ending a session or when context exceeds 60%:
 
 ## The 6-layer stack
 
-| Layer | What it reads | What it writes |
-|---|---|---|
-| L0 — Trigger | API token usage | Warn when context is at 60% |
-| L1 — Git | Branch, commits, diff stat | Feeds brief |
-| L2 — Graphify | `graphify-out/graph.json` (optional) | Pointer in brief (auto-synced & injected into L6 prompt) |
-| L3 — Tasks | `.trail/tasks.json` | Task state (JSON, Zod-validated) |
-| L4 — Decisions | `.trail/decisions.md` | Append-only decision log |
-| L5 — Sessions | `~/.claude/projects/` (opt-in) | `.trail/session-index.json` |
-| L6 — Brief | All layers | `.trail/handoff.md` |
-| Broadcast | `.trail/handoff.md` | All agent config files |
+| Layer          | What it reads                        | What it writes                                           |
+| -------------- | ------------------------------------ | -------------------------------------------------------- |
+| L0 — Trigger   | API token usage                      | Warn when context is at 60%                              |
+| L1 — Git       | Branch, commits, diff stat           | Feeds brief                                              |
+| L2 — Graphify  | `graphify-out/graph.json` (optional) | Pointer in brief (auto-synced & injected into L6 prompt) |
+| L3 — Tasks     | `.trail/tasks.json`                  | Task state (JSON, Zod-validated)                         |
+| L4 — Decisions | `.trail/decisions.md`                | Append-only decision log                                 |
+| L5 — Sessions  | `~/.claude/projects/` (opt-in)       | `.trail/session-index.json`                              |
+| L6 — Brief     | All layers                           | `.trail/handoff.md`                                      |
+| Broadcast      | `.trail/handoff.md`                  | All agent config files                                   |
 
 ---
 
@@ -185,7 +188,7 @@ Before ending a session or when context exceeds 60%:
 
 This is **harness engineering**, not prompt engineering. The key insight from Anthropic's own research:
 
-> *"Context resets — clearing the context window entirely and starting a fresh agent with a structured handoff — is more effective than compaction. The new agent starts fresh with no context anxiety."*
+> _"Context resets — clearing the context window entirely and starting a fresh agent with a structured handoff — is more effective than compaction. The new agent starts fresh with no context anxiety."_
 
 grwm automates the harness layer: writing structured artifacts to disk in real-time during the session. If the agent crashes mid-task, the next one can still resume cleanly.
 
