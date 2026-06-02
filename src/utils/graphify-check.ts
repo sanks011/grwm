@@ -48,7 +48,7 @@ function commandExists(bin: string): boolean {
  */
 function getPythonBin(): string | null {
   // 1. Try commands in PATH
-  for (const bin of ['python3', 'python', 'python3.14', 'python3.13', 'python3.12', 'python3.11', 'python3.10']) {
+  for (const bin of ['py', 'python3', 'python', 'python3.14', 'python3.13', 'python3.12', 'python3.11', 'python3.10']) {
     try {
       const result = spawnSync(bin, ['--version'], { encoding: 'utf8' })
       if (result.status === 0) {
