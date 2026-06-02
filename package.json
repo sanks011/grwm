@@ -1,0 +1,71 @@
+{
+  "name": "@sankalpasarkar/grwm",
+  "version": "0.1.4",
+  "description": "Get Ready With Me - The universal AI agent handoff tool. Never explain your codebase to a new agent again.",
+  "type": "module",
+  "bin": {
+    "grwm": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "context",
+    "handoff",
+    "claude",
+    "cursor",
+    "windsurf",
+    "copilot",
+    "cline",
+    "aider",
+    "harness",
+    "context-engineering",
+    "grwm",
+    "get-ready-with-me"
+  ],
+  "author": "Sankalpa Sarkar",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sanks011/grwm"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "gray-matter": "^4.0.3",
+    "simple-git": "^3.27.0",
+    "uuid": "^11.1.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.32.0"
+  }
+}

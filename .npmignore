@@ -1,0 +1,9 @@
+src/
+tests/
+*.test.ts
+tsconfig.json
+tsup.config.ts
+.trail/
+.env*
+*.md
+!README.md
