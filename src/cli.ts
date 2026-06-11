@@ -7,6 +7,7 @@ import { blocked } from './commands/blocked.js'
 import { handoff } from './commands/handoff.js'
 import { resume }  from './commands/resume.js'
 import { status }  from './commands/status.js'
+import { keys }    from './commands/keys.js'
 import { grwmBanner, errorMsg } from './utils/display.js'
 
 const program = new Command()
@@ -33,6 +34,7 @@ Examples:
   $ grwm resume                        Print handoff brief (run at session start)
   $ grwm status                        Show task board
   $ grwm autolog                       Automatically log recent tasks/decisions using Git/AI
+  $ grwm keys                          Manage AI provider API keys (interactive)
 
 Knowledge graph (optional but recommended):
   Install graphify: pip install graphifyy && graphify install
@@ -124,6 +126,14 @@ program
       const { autolog } = await import('./commands/autolog.js')
       await autolog()
     }
+    catch (e) { handleError(e) }
+  })
+
+program
+  .command('keys')
+  .description('Manage AI provider API keys — add, update, remove, or test saved keys (stored in ~/.grwm/keys.json)')
+  .action(async () => {
+    try { await keys() }
     catch (e) { handleError(e) }
   })
 

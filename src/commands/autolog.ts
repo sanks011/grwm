@@ -3,10 +3,18 @@ import { getGitState } from '../layers/git.js'
 import { readTasks, writeTasks, findTask } from '../layers/tasks.js'
 import { appendDecision } from '../layers/decisions.js'
 import { getGraphifyRef } from '../layers/graphify.js'
-import { success, warn, info, sectionHeader, bold, cyan, gray, green } from '../utils/display.js'
+import { success, warn, info, sectionHeader, bold, cyan, gray, green, yellow } from '../utils/display.js'
 import { now } from '../utils/timestamp.js'
 import { v4 as uuid } from 'uuid'
 import simpleGit from 'simple-git'
+import {
+  resolveProvider,
+  hasAnyRealKey,
+  printKeysHint,
+  PROVIDERS,
+  OPENCODE_BASE_URL,
+  OPENCODE_MODEL,
+} from '../utils/ai-config.js'
 
 interface ExtractedData {
   tasks: Array<{ title: string; files: string[]; notes: string }>
@@ -15,7 +23,8 @@ interface ExtractedData {
 
 /**
   * grwm autolog — Automated Context and Handoff Generator
-  * Uses OpenCode DeepSeek V4 Flash (free), Anthropic Claude, or local Git Heuristics
+  * Uses the best available AI provider (OpenCode, OpenAI, Anthropic, etc.)
+  * or falls back to free public OpenCode gateway, then to Git heuristics.
   */
 export async function autolog(): Promise<void> {
   const trailDir = requireTrailDir()
@@ -30,30 +39,31 @@ export async function autolog(): Promise<void> {
     return
   }
 
-  // 1. Determine which model or parser to use
-  const opencodeKey = process.env.OPENCODE_API_KEY
-  const anthropicKey = process.env.ANTHROPIC_API_KEY
-
   const config = await readConfig(trailDir)
   info('Checking for Graphify knowledge graph to enrich autolog...')
   const graph = await getGraphifyRef(projectRoot, config.graphifyPath)
 
+  // Resolve the best available AI provider
+  const provider = resolveProvider()
+
   let result: ExtractedData = { tasks: [], decisions: [] }
 
-  if (opencodeKey || (!opencodeKey && !anthropicKey)) {
-    const key = opencodeKey || 'public'
-    if (key === 'public') {
-      info(`No AI API Keys detected. Using ${bold('OpenCode Free DeepSeek V4 Flash')} via the public gateway...`)
-    } else {
-      info(`Detected ${bold('OpenCode API Key')}! Running free DeepSeek V4 Flash AI autologger...`)
-    }
-    result = await callOpenCodeDeepSeekV4Flash(projectRoot, gitState, key, graph)
-  } else if (anthropicKey) {
-    info(`Detected ${bold('Anthropic API Key')}! Running Claude AI autologger...`)
-    result = await callAnthropicClaude(projectRoot, gitState, anthropicKey, graph)
+  if (provider.source === 'public') {
+    info(`No AI API keys detected. Using ${bold('OpenCode Free DeepSeek V4 Flash')} via the public gateway...`)
+  } else if (provider.source === 'saved') {
+    info(`Using ${bold(provider.def.label)} from saved keys (~/.grwm/keys.json)...`)
   } else {
-    info(`Running zero-cost ${bold('Local Git Heuristics Parser')}...`)
-    result = await parseGitHeuristics(projectRoot, gitState)
+    info(`Using ${bold(provider.def.label)} (from environment)...`)
+  }
+
+  // Anthropic uses a different API shape — keep dedicated function
+  if (provider.name === 'anthropic') {
+    result = await callAnthropic(projectRoot, gitState, provider.key, graph)
+  } else {
+    // All others (opencode, openai, deepseek, groq, gemini, custom) use OpenAI-compatible API
+    const baseUrl = provider.def.baseUrl ?? OPENCODE_BASE_URL
+    const model   = provider.def.model   ?? OPENCODE_MODEL
+    result = await callOpenAICompat(projectRoot, gitState, provider.key, graph, baseUrl, model, provider.source === 'public')
   }
 
   // 2. Write Extracted Data back to grwm tasks and decisions
@@ -62,7 +72,7 @@ export async function autolog(): Promise<void> {
     return
   }
 
-  const tasksFilePath = tasksPath(trailDir)
+  const tasksFilePath     = tasksPath(trailDir)
   const decisionsFilePath = decisionsPath(trailDir)
 
   // Write Tasks
@@ -71,20 +81,20 @@ export async function autolog(): Promise<void> {
     for (const t of result.tasks) {
       const existing = await findTask(tasksFile, t.title)
       if (existing) {
-        existing.status = 'done'
+        existing.status       = 'done'
         existing.files_touched = Array.from(new Set([...(existing.files_touched || []), ...t.files]))
-        existing.notes = t.notes
-        existing.updatedAt = now()
+        existing.notes        = t.notes
+        existing.updatedAt    = now()
         success(`Auto-updated existing task: ${bold(existing.title)} → status: ${green('done')}`)
       } else {
         const newTask = {
-          id: uuid(),
-          title: t.title,
-          status: 'done' as const,
-          createdAt: now(),
-          updatedAt: now(),
+          id:            uuid(),
+          title:         t.title,
+          status:        'done' as const,
+          createdAt:     now(),
+          updatedAt:     now(),
           files_touched: t.files,
-          notes: t.notes
+          notes:         t.notes,
         }
         tasksFile.tasks.push(newTask)
         success(`Auto-created completed task: ${bold(newTask.title)} → status: ${green('done')}`)
@@ -105,20 +115,22 @@ export async function autolog(): Promise<void> {
   console.log(`  Run ${cyan('grwm status')} or ${cyan('grwm handoff')} to compile your updated brief.\n`)
 }
 
-/** Call OpenCode DeepSeek V4 Flash model (completely free OpenAI compatible endpoint) */
-async function callOpenCodeDeepSeekV4Flash(
+// ─── OpenAI-compatible call (OpenCode, OpenAI, DeepSeek, Groq, etc.) ──────────
+
+async function callOpenAICompat(
   projectRoot: string,
   gitState: any,
   apiKey: string,
-  graph: any
+  graph: any,
+  baseUrl: string,
+  model: string,
+  isPublic: boolean,
 ): Promise<ExtractedData> {
   const git = simpleGit(projectRoot)
   let rawDiff = ''
   try {
     rawDiff = await git.diff()
-    if (rawDiff.length > 20000) {
-      rawDiff = rawDiff.slice(0, 20000) + '\n...(truncated due to size)'
-    }
+    if (rawDiff.length > 20000) rawDiff = rawDiff.slice(0, 20000) + '\n...(truncated due to size)'
   } catch {
     rawDiff = 'No uncommitted changes.'
   }
@@ -126,18 +138,18 @@ async function callOpenCodeDeepSeekV4Flash(
   const prompt = getAutologPrompt(rawDiff, gitState.recentCommits, graph)
 
   try {
-    const response = await fetch('https://opencode.ai/zen/v1/chat/completions', {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-v4-flash-free',
+        model,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
+        response_format: { type: 'json_object' },
+      }),
     })
 
     if (!response.ok) {
@@ -146,28 +158,34 @@ async function callOpenCodeDeepSeekV4Flash(
     }
 
     const data: any = await response.json()
-    const content = data.choices?.[0]?.message?.content || ''
+    const content   = data.choices?.[0]?.message?.content || ''
     return JSON.parse(content.trim())
+
   } catch (err: any) {
-    warn(`OpenCode API request failed: ${err.message}. Falling back to Git heuristics...`)
+    // If using the public gateway and it failed, show the setup hint
+    if (isPublic && !hasAnyRealKey()) {
+      warn(`OpenCode public gateway unreachable: ${err.message}`)
+      printKeysHint()
+    } else {
+      warn(`AI API request failed: ${err.message}. Falling back to Git heuristics...`)
+    }
     return parseGitHeuristics(projectRoot, gitState)
   }
 }
 
-/** Call Anthropic Claude API */
-async function callAnthropicClaude(
+// ─── Anthropic Claude (dedicated call — different API shape) ──────────────────
+
+async function callAnthropic(
   projectRoot: string,
   gitState: any,
   apiKey: string,
-  graph: any
+  graph: any,
 ): Promise<ExtractedData> {
   const git = simpleGit(projectRoot)
   let rawDiff = ''
   try {
     rawDiff = await git.diff()
-    if (rawDiff.length > 20000) {
-      rawDiff = rawDiff.slice(0, 20000) + '\n...(truncated due to size)'
-    }
+    if (rawDiff.length > 20000) rawDiff = rawDiff.slice(0, 20000) + '\n...(truncated due to size)'
   } catch {
     rawDiff = 'No uncommitted changes.'
   }
@@ -178,15 +196,15 @@ async function callAnthropicClaude(
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key': apiKey,
+        'x-api-key':         apiKey,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type':      'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model:      'claude-3-5-sonnet-20241022',
         max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }]
-      })
+        messages:   [{ role: 'user', content: prompt }],
+      }),
     })
 
     if (!response.ok) {
@@ -194,59 +212,52 @@ async function callAnthropicClaude(
       throw new Error(`HTTP ${response.status}: ${errorText}`)
     }
 
-    const data: any = await response.json()
-    const rawContent = data.content?.[0]?.text || ''
-    
-    // Parse JSON block safely
-    const jsonMatch = rawContent.match(/\{[\s\S]*\}/)
-    const jsonStr = jsonMatch ? jsonMatch[0] : rawContent
+    const data: any   = await response.json()
+    const rawContent  = data.content?.[0]?.text || ''
+    const jsonMatch   = rawContent.match(/\{[\s\S]*\}/)
+    const jsonStr     = jsonMatch ? jsonMatch[0] : rawContent
     return JSON.parse(jsonStr.trim())
+
   } catch (err: any) {
     warn(`Anthropic API request failed: ${err.message}. Falling back to Git heuristics...`)
     return parseGitHeuristics(projectRoot, gitState)
   }
 }
 
-/** Zero-cost offline local Git Heuristics Parser */
+// ─── Zero-cost offline Git Heuristics Parser ──────────────────────────────────
+
 async function parseGitHeuristics(projectRoot: string, gitState: any): Promise<ExtractedData> {
-  const git = simpleGit(projectRoot)
+  const git    = simpleGit(projectRoot)
   const result: ExtractedData = { tasks: [], decisions: [] }
 
   try {
-    // Parse uncommitted changed files
     if (gitState.changedFiles.length > 0) {
       const changedDesc = gitState.changedFiles.join(', ')
       result.tasks.push({
-        title: `Work in progress uncommitted changes`,
+        title: 'Work in progress uncommitted changes',
         files: gitState.changedFiles,
-        notes: `Currently modified active files: ${changedDesc}`
+        notes: `Currently modified active files: ${changedDesc}`,
       })
     }
 
-    // Parse the last 3 commits from simpleGit log
     const log = await git.log({ maxCount: 3 })
     for (const commit of log.all) {
-      const title = commit.message.trim()
-      // Clean standard commit prefixes (feat:, fix:, refactor:, chore:, docs:)
+      const title        = commit.message.trim()
       const cleanedTitle = title.replace(/^(feat|fix|refactor|chore|docs|style|test)(\(.*?\))?!?\s*:\s*/i, '')
-      
       if (!cleanedTitle) continue
 
-      // Fetch files touched in this specific commit hash
       let files: string[] = []
       try {
         const showOutput = await git.show(['--name-only', '--format=', commit.hash])
         files = showOutput.trim().split('\n').map(f => f.trim()).filter(Boolean)
       } catch {}
 
-      // Add to completed tasks
       result.tasks.push({
-        title: cleanedTitle,
-        files: files.slice(0, 15),
-        notes: `Extracted automatically from Git commit ${commit.hash.slice(0, 7)}: "${commit.message}"`
+        title:  cleanedTitle,
+        files:  files.slice(0, 15),
+        notes:  `Extracted automatically from Git commit ${commit.hash.slice(0, 7)}: "${commit.message}"`,
       })
 
-      // Extract decisions from body
       if (commit.body) {
         const lines = commit.body.split('\n').map(l => l.trim()).filter(Boolean)
         for (const line of lines) {
@@ -260,13 +271,14 @@ async function parseGitHeuristics(projectRoot: string, gitState: any): Promise<E
     warn(`Git heuristics parsing failed: ${e.message}`)
   }
 
-  return result;
+  return result
 }
 
-/** Build rich contextual analysis prompt for LLMs */
+// ─── Prompt builder ────────────────────────────────────────────────────────────
+
 function getAutologPrompt(rawDiff: string, recentCommits: string[], graph?: any): string {
   const commitsText = recentCommits.map(c => `- ${c}`).join('\n')
-  
+
   let graphContext = ''
   if (graph && graph.available && graph.topNodes.length > 0) {
     graphContext = `

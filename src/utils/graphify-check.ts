@@ -1,10 +1,10 @@
 import { spawnSync, execSync } from 'child_process'
 import { info, warn, success, cyan, bold, yellow, gray } from './display.js'
-import readline from 'readline'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-
+import readline from 'readline'
+import { resolveProvider, OPENCODE_BASE_URL, OPENCODE_MODEL } from './ai-config.js'
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
@@ -18,6 +18,7 @@ function askQuestion(query: string): Promise<string> {
     })
   })
 }
+
 
 /**
  * Graphify — https://graphify.dev
@@ -111,53 +112,61 @@ export function isGraphifyInstalled(): boolean {
   return false
 }
 
-function setupOpenCodeProvider(projectRoot: string): void {
+/**
+ * Configure Graphify to use the same OpenCode provider that autolog uses.
+ * Writes .graphify/providers.json locally + globally, then injects the
+ * resolved key from ai-config (env → ~/.grwm/keys.json → public fallback).
+ */
+function setupGraphifyProvider(projectRoot: string): void {
   try {
+    // Resolve the same provider autolog uses so they are always in sync
+    const provider = resolveProvider()
+    const apiKey   = provider.key
+    const baseUrl  = provider.def.baseUrl ?? OPENCODE_BASE_URL
+    const model    = provider.def.model   ?? OPENCODE_MODEL
+    const envKey   = provider.def.envKey
+
+    // Build the providers.json that graphify reads for its --backend flag
     const providerConfig = {
       opencode: {
-        base_url: 'https://opencode.ai/zen/v1',
-        default_model: 'deepseek-v4-flash-free',
-        env_key: 'OPENCODE_API_KEY',
-        temperature: 0,
-        max_tokens: 16384
-      }
+        base_url:      OPENCODE_BASE_URL,
+        default_model: OPENCODE_MODEL,
+        env_key:       'OPENCODE_API_KEY',
+        temperature:   0,
+        max_tokens:    16384,
+      },
+      // If the user configured a different provider, add it too
+      ...(provider.name !== 'opencode' ? {
+        [provider.name]: {
+          base_url:      baseUrl,
+          default_model: model,
+          env_key:       envKey,
+          temperature:   0,
+          max_tokens:    16384,
+        },
+      } : {}),
     }
     const configStr = JSON.stringify(providerConfig, null, 2)
 
-    // 1. Write local config
-    const localDir = path.join(projectRoot, '.graphify')
-    if (!fs.existsSync(localDir)) {
-      fs.mkdirSync(localDir, { recursive: true })
-    }
-    const localFile = path.join(localDir, 'providers.json')
-    if (!fs.existsSync(localFile)) {
-      fs.writeFileSync(localFile, configStr, 'utf8')
-    }
+    // 1. Write local .graphify/providers.json
+    const localDir  = path.join(projectRoot, '.graphify')
+    if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true })
+    fs.writeFileSync(path.join(localDir, 'providers.json'), configStr, 'utf8')
 
-    // 2. Write global config
+    // 2. Write global ~/.graphify/providers.json
     const globalDir = path.join(os.homedir(), '.graphify')
-    if (!fs.existsSync(globalDir)) {
-      fs.mkdirSync(globalDir, { recursive: true })
-    }
-    const globalFile = path.join(globalDir, 'providers.json')
-    if (!fs.existsSync(globalFile)) {
-      fs.writeFileSync(globalFile, configStr, 'utf8')
-    }
+    if (!fs.existsSync(globalDir)) fs.mkdirSync(globalDir, { recursive: true })
+    fs.writeFileSync(path.join(globalDir, 'providers.json'), configStr, 'utf8')
 
-    // 3. Set fallback env key if no other LLM key is present
-    const hasAnyKey = !!(
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENAI_API_KEY ||
-      process.env.DEEPSEEK_API_KEY ||
-      process.env.MOONSHOT_API_KEY ||
-      process.env.OLLAMA_BASE_URL
-    )
-    if (!hasAnyKey && !process.env.OPENCODE_API_KEY) {
-      process.env.OPENCODE_API_KEY = 'public'
+    // 3. Inject the resolved key into env so graphify subprocess picks it up
+    if (!process.env[envKey]) {
+      process.env[envKey] = apiKey
     }
-  } catch (err) {
+    // Always ensure OPENCODE_API_KEY is set (graphify falls back to it)
+    if (!process.env.OPENCODE_API_KEY) {
+      process.env.OPENCODE_API_KEY = apiKey
+    }
+  } catch {
     // Ignore issues writing config, fail-soft
   }
 }
@@ -168,7 +177,7 @@ function setupOpenCodeProvider(projectRoot: string): void {
  */
 export function runGraphify(projectRoot: string): boolean {
   try {
-    setupOpenCodeProvider(projectRoot)
+    setupGraphifyProvider(projectRoot)
     if (commandExists(GRAPHIFY_BIN)) {
       execSync(`${GRAPHIFY_BIN} .`, { cwd: projectRoot, stdio: 'inherit' })
       return true
