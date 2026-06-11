@@ -1,6 +1,6 @@
 {
   "name": "@sankalpasarkar/grwm",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Get Ready With Me - The universal AI agent handoff tool. Never explain your codebase to a new agent again.",
   "homepage": "https://grwm-init.vercel.app",
   "type": "module",
