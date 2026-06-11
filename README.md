@@ -108,6 +108,7 @@ grwm resume
 | `grwm handoff --index-sessions` | Include Claude Code session analysis (needs `ANTHROPIC_API_KEY`)                                                                             |
 | `grwm resume`                   | Print handoff brief (run at session start)                                                                                                   |
 | `grwm status`                   | Show task board and recent decisions                                                                                                         |
+| `grwm keys`                     | Manage AI provider API keys interactively (add, update, remove, test, custom endpoints)                                                      |
 
 ---
 
