@@ -231,9 +231,16 @@ export async function ensureGraphify(
   console.log()
 
   if (!autoInstall) {
-    const answer = await askQuestion(`  Would you like to install Graphify automatically now? (Y/n): `)
-    const choice = answer.trim().toLowerCase()
-    if (choice === '' || choice === 'y' || choice === 'yes') {
+    // Only prompt on real interactive TTYs — non-TTY stdin resolves readline
+    // immediately with '', which would silently trigger auto-install.
+    const isTTY = process.stdin.isTTY === true
+    let choice = ''
+    if (isTTY) {
+      const answer = await askQuestion(`  Would you like to install Graphify automatically now? (Y/n): `)
+      choice = answer.trim().toLowerCase()
+    }
+
+    if (isTTY && (choice === 'y' || choice === 'yes')) {
       autoInstall = true
     } else {
       console.log(`\n  To install manually:`)
