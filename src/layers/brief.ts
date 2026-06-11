@@ -51,7 +51,6 @@ export async function compileHandoffBrief(
   const active     = tasks.tasks.filter((t) => t.status === 'in-progress')
   const blocked    = tasks.tasks.filter((t) => t.status === 'blocked')
   const queued     = tasks.tasks.filter((t) => t.status === 'queued')
-  const nextTask   = active[0] ?? queued[0]
   const projectName = tasks.projectName || path.basename(projectRoot)
 
   // ─── Build sections ──────────────────────────────────────────────────────
@@ -69,6 +68,7 @@ export async function compileHandoffBrief(
       ].filter(Boolean)
     : ['- No Graphify graph found — run `graphify .` to index the codebase']
 
+  const nextTask = active[0] ?? queued[0]
   const nextLines = nextTask
     ? [`- **${nextTask.title}** [${nextTask.status}]${nextTask.notes ? ` — ${nextTask.notes}` : ''}`]
     : ['- All tasks complete ✓']
@@ -76,6 +76,11 @@ export async function compileHandoffBrief(
   const inProgressLines = active.length > 0
     ? active.map((t) => `- ${t.title}${t.notes ? ` — ${t.notes}` : ''}`)
     : ['- none']
+
+  // All queued tasks beyond the first (the backlog)
+  const queuedLines = queued.length > 1
+    ? queued.slice(1).map((t) => `- ${t.title} [queued]`)
+    : []
 
   const doneLines = done.length > 0
     ? done.slice(-6).map((t) => `- ✓ ${t.title}`)
@@ -107,6 +112,7 @@ export async function compileHandoffBrief(
     '## [NEXT]',
     ...nextLines,
     '',
+    ...(queuedLines.length > 0 ? ['## [QUEUED]', ...queuedLines, ''] : []),
     '## [IN_PROGRESS]',
     ...inProgressLines,
     '',
