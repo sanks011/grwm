@@ -6,3 +6,5 @@ dist/
 trash.txt
 /website
 /opencode
+.graphify/
+graphify-out/

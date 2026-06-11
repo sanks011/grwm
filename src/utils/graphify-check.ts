@@ -1,6 +1,10 @@
 import { spawnSync, execSync } from 'child_process'
 import { info, warn, success, cyan, bold, yellow, gray } from './display.js'
 import readline from 'readline'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
+
 
 function askQuestion(query: string): Promise<string> {
   const rl = readline.createInterface({
@@ -107,12 +111,64 @@ export function isGraphifyInstalled(): boolean {
   return false
 }
 
+function setupOpenCodeProvider(projectRoot: string): void {
+  try {
+    const providerConfig = {
+      opencode: {
+        base_url: 'https://opencode.ai/zen/v1',
+        default_model: 'deepseek-v4-flash-free',
+        env_key: 'OPENCODE_API_KEY',
+        temperature: 0,
+        max_tokens: 16384
+      }
+    }
+    const configStr = JSON.stringify(providerConfig, null, 2)
+
+    // 1. Write local config
+    const localDir = path.join(projectRoot, '.graphify')
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true })
+    }
+    const localFile = path.join(localDir, 'providers.json')
+    if (!fs.existsSync(localFile)) {
+      fs.writeFileSync(localFile, configStr, 'utf8')
+    }
+
+    // 2. Write global config
+    const globalDir = path.join(os.homedir(), '.graphify')
+    if (!fs.existsSync(globalDir)) {
+      fs.mkdirSync(globalDir, { recursive: true })
+    }
+    const globalFile = path.join(globalDir, 'providers.json')
+    if (!fs.existsSync(globalFile)) {
+      fs.writeFileSync(globalFile, configStr, 'utf8')
+    }
+
+    // 3. Set fallback env key if no other LLM key is present
+    const hasAnyKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.DEEPSEEK_API_KEY ||
+      process.env.MOONSHOT_API_KEY ||
+      process.env.OLLAMA_BASE_URL
+    )
+    if (!hasAnyKey && !process.env.OPENCODE_API_KEY) {
+      process.env.OPENCODE_API_KEY = 'public'
+    }
+  } catch (err) {
+    // Ignore issues writing config, fail-soft
+  }
+}
+
 /**
  * Run `graphify .` in the project root to build or refresh the knowledge graph.
  * Output lands in graphify-out/graph.json, graph.html, GRAPH_REPORT.md
  */
 export function runGraphify(projectRoot: string): boolean {
   try {
+    setupOpenCodeProvider(projectRoot)
     if (commandExists(GRAPHIFY_BIN)) {
       execSync(`${GRAPHIFY_BIN} .`, { cwd: projectRoot, stdio: 'inherit' })
       return true
@@ -127,6 +183,7 @@ export function runGraphify(projectRoot: string): boolean {
     return false
   }
 }
+
 
 /**
  * Ensure graphify is installed, optionally auto-installing via pip and running it.
@@ -189,9 +246,9 @@ export async function ensureGraphify(
     return { installed: false, graphGenerated: false }
   }
 
-  console.log(`  Auto-installing ${bold('graphifyy')} via pip (using: ${pyBin})...`)
+  console.log(`  Auto-installing ${bold('graphifyy')} and ${bold('openai')} via pip (using: ${pyBin})...`)
   try {
-    execSync(`"${pyBin}" -m pip install ${GRAPHIFY_PIP_PKG}`, { stdio: 'inherit' })
+    execSync(`"${pyBin}" -m pip install ${GRAPHIFY_PIP_PKG} openai`, { stdio: 'inherit' })
     execSync(`"${pyBin}" -m graphify install`, { stdio: 'inherit' })
     success(`graphify installed`)
 
@@ -209,7 +266,7 @@ export async function ensureGraphify(
     return { installed: true, graphGenerated: false }
   } catch {
     warn(`Auto-install failed. Run manually:`)
-    warn(`  ${cyan(`pip install ${GRAPHIFY_PIP_PKG} && graphify install`)}`)
+    warn(`  ${cyan(`pip install ${GRAPHIFY_PIP_PKG} openai && graphify install`)}`)
     return { installed: false, graphGenerated: false }
   }
 }
